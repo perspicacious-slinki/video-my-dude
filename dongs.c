@@ -66,7 +66,7 @@ struct framedata_t fd = {.line1 = {0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00,
 int main() {
 
   for (int i = 0; i < 24; i++) {
-    fd.line1[i] = 0b10101010;
+    fd.line1[i] = 0b10001100;
   }
 
   cli();
@@ -155,10 +155,11 @@ void field_2_sync() {
   return;
 }
 
-uint8_t off = 12;
+uint8_t off = 24;
 
 void line_gen_f1(void) {
-  if (fd.line >= 24 + off && fd.line <= 310 - off) {
+  if (fd.line >= 24 + off && fd.line <= 309 - off && fd.line % 2 == 0) {
+     __asm__ __volatile__("NOP");
     _delay_us(10);
     uint8_t ctr = 18;
     uint8_t vid;
@@ -219,7 +220,7 @@ void line_gen_f1(void) {
 }
 
 void line_gen_f2(void) {
-  if (fd.line >= 336 + off && fd.line <= 622 - off) {
+  if (fd.line >= 336 + off && fd.line <= 622 - off && fd.line % 2) {
     _delay_us(10);
     uint8_t ctr = 18;
     uint8_t vid;
