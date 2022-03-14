@@ -1,11 +1,13 @@
 PKG=dongs
 BIN=${PKG}
-OBJS=${PKG}.o
+SRCS=$(wildcard *.S *.c)
+OBJS=$(addsuffix .o,$(basename $(SRCS)))
+#OBJS=${PKG}.o
 MCU=atmega328p
 
 CC=avr-gcc
 OBJCOPY=avr-objcopy
-CFLAGS=-O3 -DF_CPU=16000000UL -mmcu=${MCU} -Wall
+CFLAGS=-Os -DF_CPU=16000000UL -mmcu=${MCU} -Wall
 PORT=/dev/ttyACM0
 
 ${BIN}.hex: ${BIN}.elf
