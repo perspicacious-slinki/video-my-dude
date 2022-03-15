@@ -1,6 +1,6 @@
 PKG=dongs
 BIN=${PKG}
-SRCS=$(wildcard *.S *.c)
+SRCS=$(wildcard *.S *.c fonts/*.c)
 OBJS=$(addsuffix .o,$(basename $(SRCS)))
 #OBJS=${PKG}.o
 MCU=atmega328p

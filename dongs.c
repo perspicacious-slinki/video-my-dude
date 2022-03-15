@@ -1,6 +1,8 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <util/delay.h>
+#include <avr/pgmspace.h>
+#include "fonts/font8x8.h"
 
 #define F_CPU 16000000UL // 16 MHz
 #ifndef __AVR_ATmega328P__
@@ -45,9 +47,11 @@ extern void linegoesbrr(uint8_t *ptr, uint8_t counter);
 // If we're going to do a smelly global thing for frame stuff, at least bundle
 // it up in a struct
 volatile uint8_t sanitycheck = 1;
+uint16_t cunt = 0;
+char textbuff[18] = {'h', 'e', 'l', 'l', 'o'};
 struct framedata_t {
-  uint8_t line1[24];
-  uint8_t line2[24];
+  uint8_t line1[18];
+  uint8_t line2[18];
   uint8_t *l_ptr;
   uint16_t line;
   uint8_t vsync;
@@ -64,9 +68,8 @@ struct framedata_t fd = {.line1 = {0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00,
                          .line_handler = &field_1_sync};
 
 int main() {
-
-  for (int i = 0; i < 24; i++) {
-    fd.line1[i] = 0b10001100;
+  for (int i = 0; i < 18; i++) {
+    fd.line1[i] = 0b10101010;
   }
 
   cli();
@@ -91,10 +94,12 @@ int main() {
   sei();
 
   while (1) {
-    _delay_ms(500);
+    _delay_ms(5);
     PORTB |= (1 << 5);
-    _delay_ms(500);
+    cunt++;
+    _delay_ms(5);
     PORTB &= !(1 << 5);
+    cunt++;
   }
   return 0;
 }
@@ -157,156 +162,54 @@ void field_2_sync() {
 
 uint8_t off = 24;
 
+
+uint16_t textY = 0;//((fd.line-48) << 2) + (fd.line-48);
 void line_gen_f1(void) {
-  if (fd.line >= 24 + off && fd.line <= 309 - off && fd.line % 2 == 0) {
+  if (fd.line >= 24 + off && fd.line <= 309 - off) {
      __asm__ __volatile__("NOP");
-    _delay_us(10);
+    //_delay_us(10);
+    _delay_us(5);
     uint8_t ctr = 18;
-    uint8_t vid;
+    uint16_t INDEX = textY + cunt;
+    
+     //if(textY < 8){
+      fd.line1[1] = pgm_read_byte(&(font8x8[INDEX]));//font8x8[3 + (63*8) + (textY * 8)];
+      fd.line1[2] = pgm_read_byte(&(font8x8[INDEX+8]));
+     //}
+
+    textY++;
     volatile uint8_t *meme = &(fd.line1[0]);
     linegoesbrr(meme, ctr);
-    // while (ctr) {
-    //   vid = fd.line1[ctr];
-    //   PORTD = vid;
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   vid = vid << 1;
-    //   PORTD = vid;
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   vid = vid << 1;
-    //   PORTD = vid;
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   vid = vid << 1;
-    //   PORTD = vid;
-    //   asm volatile("dec %0" : "+r"(ctr));
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   vid = vid << 1;
-    //   PORTD = vid;
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   vid = vid << 1;
-    //   PORTD = vid;
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   vid = vid << 1;
-    //   PORTD = vid;
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   __asm__ __volatile__("NOP");
-    //   vid = vid << 1;
-    //   PORTD = vid;
-    // }
   }
   if (fd.line == 310) {
     fd.line_handler = &field_2_sync;
     fd.vsync = 14;
+    textY = 0;
   }
   fd.line++;
 }
 
 void line_gen_f2(void) {
-  if (fd.line >= 336 + off && fd.line <= 622 - off && fd.line % 2) {
-    _delay_us(10);
+  if (fd.line >= 336 + off && fd.line <= 622 - off) {
+    //_delay_us(10);
+    _delay_us(5);
     uint8_t ctr = 18;
-    uint8_t vid;
-    linegoesbrr(&(fd.line1[0]), ctr);
+    
+    uint16_t INDEX = textY + cunt;
+    
+     //if(textY < 8){
+      fd.line1[1] = pgm_read_byte(&(font8x8[INDEX]));
+      fd.line1[2] = pgm_read_byte(&(font8x8[INDEX+8]));
+     //}
 
-    //   while (ctr) {
-    //     vid = fd.line1[ctr];
-    //     PORTD = vid;
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     vid = vid << 1;
-    //     PORTD = vid;
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     vid = vid << 1;
-    //     PORTD = vid;
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     vid = vid << 1;
-    //     PORTD = vid;
-    //     asm volatile("dec %0" : "+r"(ctr));
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     vid = vid << 1;
-    //     PORTD = vid;
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     vid = vid << 1;
-    //     PORTD = vid;
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     vid = vid << 1;
-    //     PORTD = vid;
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     __asm__ __volatile__("NOP");
-    //     vid = vid << 1;
-    //     PORTD = vid;
-    //   }
+    textY++;
+    volatile uint8_t *meme = &(fd.line1[0]);
+    linegoesbrr(meme, ctr);
   }
   if (fd.line == 622) {
     fd.line_handler = &field_1_sync;
     fd.vsync = 16;
+    textY = 0;
   }
   fd.line++;
 }
-
-// vid = fd.line1[ctr];
-// PORTD = vid;
-// __asm__ __volatile__("NOP");
-// __asm__ __volatile__("NOP");
-// vid = vid << 1;
-// PORTD = vid;
-// __asm__ __volatile__("NOP");
-// __asm__ __volatile__("NOP");
-// vid = vid << 1;
-// PORTD = vid;
-// __asm__ __volatile__("NOP");
-// __asm__ __volatile__("NOP");
-// vid = vid << 1;
-// PORTD = vid;
-// asm volatile("dec %0" : "+r"(ctr));
-// __asm__ __volatile__("NOP");
-// vid = vid << 1;
-// PORTD = vid;
-// __asm__ __volatile__("NOP");
-// __asm__ __volatile__("NOP");
-// vid = vid << 1;
-// PORTD = vid;
-// __asm__ __volatile__("NOP");
-// __asm__ __volatile__("NOP");
-// vid = vid << 1;
-// PORTD = vid;
-// __asm__ __volatile__("NOP");
-// __asm__ __volatile__("NOP");
-// vid = vid << 1;
-// PORTD = vid;
