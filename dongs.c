@@ -47,8 +47,9 @@ extern void linegoesbrr(uint8_t *ptr, uint8_t counter);
 // If we're going to do a smelly global thing for frame stuff, at least bundle
 // it up in a struct
 volatile uint8_t sanitycheck = 1;
+uint8_t stinger = 0;
 uint16_t cunt = 0;
-char textbuff[18] = {'h', 'e', 'l', 'l', 'o'};
+char textbuff[18] = {0x48, 0x65, 0x6c, 0x6c, 0x6f};
 struct framedata_t {
   uint8_t line1[18];
   uint8_t line2[18];
@@ -94,10 +95,10 @@ int main() {
   sei();
 
   while (1) {
-    _delay_ms(5);
+    _delay_ms(100);
     PORTB |= (1 << 5);
-    cunt++;
-    _delay_ms(5);
+    textbuff[5]++;
+    _delay_ms(100);
     PORTB &= !(1 << 5);
     cunt++;
   }
@@ -160,31 +161,41 @@ void field_2_sync() {
   return;
 }
 
-uint8_t off = 24;
+uint8_t off = 32;
 
 
 uint16_t textY = 0;//((fd.line-48) << 2) + (fd.line-48);
 void line_gen_f1(void) {
   if (fd.line >= 24 + off && fd.line <= 309 - off) {
-     __asm__ __volatile__("NOP");
+     //__asm__ __volatile__("NOP");
+     //__asm__ __volatile__("NOP");
     //_delay_us(10);
-    _delay_us(5);
-    uint8_t ctr = 18;
+    //_delay_us(5);
+    uint8_t ctr = 12;
+
     uint16_t INDEX = textY + cunt;
     
+    for(int i = 0; i < ctr; i++){
+      fd.line1[i] = pgm_read_byte(&(font8x8[textbuff[i]*8 + (textY/2)]));
+    }
+
      //if(textY < 8){
-      fd.line1[1] = pgm_read_byte(&(font8x8[INDEX]));//font8x8[3 + (63*8) + (textY * 8)];
-      fd.line1[2] = pgm_read_byte(&(font8x8[INDEX+8]));
+      //fd.line1[1] = pgm_read_byte(&(font8x8[INDEX]));//font8x8[3 + (63*8) + (textY * 8)];
+      //fd.line1[2] = pgm_read_byte(&(font8x8[INDEX+8]));
      //}
 
-    textY++;
+    textY+= 1;
+    if(textY == 16){
+      textY = 0;
+    }
+
     volatile uint8_t *meme = &(fd.line1[0]);
     linegoesbrr(meme, ctr);
   }
   if (fd.line == 310) {
-    fd.line_handler = &field_2_sync;
+    fd.line_handler = &field_1_sync;
     fd.vsync = 14;
-    textY = 0;
+        textY = 0;
   }
   fd.line++;
 }
@@ -192,17 +203,25 @@ void line_gen_f1(void) {
 void line_gen_f2(void) {
   if (fd.line >= 336 + off && fd.line <= 622 - off) {
     //_delay_us(10);
-    _delay_us(5);
-    uint8_t ctr = 18;
+    //_delay_us(5);
+    uint8_t ctr = 12;
     
     uint16_t INDEX = textY + cunt;
     
+    for(int i = 0; i < ctr; i++){
+      fd.line1[i] = pgm_read_byte(&(font8x8[textbuff[i]*8 + 3 + (textY)]));
+    }
+
      //if(textY < 8){
-      fd.line1[1] = pgm_read_byte(&(font8x8[INDEX]));
-      fd.line1[2] = pgm_read_byte(&(font8x8[INDEX+8]));
+      //fd.line1[1] = pgm_read_byte(&(font8x8[INDEX]));//font8x8[3 + (63*8) + (textY * 8)];
+      //fd.line1[2] = pgm_read_byte(&(font8x8[INDEX+8]));
      //}
 
-    textY++;
+    textY+= 1;
+    if(textY == 16){
+      textY = 0;
+    }
+
     volatile uint8_t *meme = &(fd.line1[0]);
     linegoesbrr(meme, ctr);
   }

@@ -40,6 +40,8 @@ linegoesbrr: ;R22 contains the ctr value
     nop
     out     0x0b, r24
     brne    loop
+    add     r24, r24 ;Make sure last pixel on the line is a 0!
+    out     0x0b, r24
     ret
 
 
