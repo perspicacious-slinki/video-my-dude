@@ -1,13 +1,19 @@
+#include "fonts/font8x8.h"
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include <util/delay.h>
 #include <avr/pgmspace.h>
-#include "fonts/font8x8.h"
+#include <util/delay.h>
 
 #define F_CPU 16000000UL // 16 MHz
 #ifndef __AVR_ATmega328P__
 #define __AVR_ATmega328P__
 #endif
+
+#define VPULSE 64
+#define VPULSE_SHORT 32
+#define VPULSE_LONG 480
+#define LINE_RATE 1021
+#define LINE_DOUBLE_RATE 509
 // Generating PAL interlaced vid is a pain in the arse but here we are!!!!
 // TLDR:
 
@@ -47,13 +53,11 @@ extern void linegoesbrr(uint8_t *ptr, uint8_t counter);
 // If we're going to do a smelly global thing for frame stuff, at least bundle
 // it up in a struct
 volatile uint8_t sanitycheck = 1;
-uint8_t stinger = 0;
-uint16_t cunt = 0;
-char textbuff[18] = {0x48, 0x65, 0x6c, 0x6c, 0x6f};
+// char textbuff[18] = "hello frens";
+char textbuff[] = "The fitnessgram pacer test is a multi-stage aerobic fitness "
+                  "capacity test.";
 struct framedata_t {
   uint8_t line1[18];
-  uint8_t line2[18];
-  uint8_t *l_ptr;
   uint16_t line;
   uint8_t vsync;
   void (*line_handler)(void);
@@ -63,16 +67,11 @@ struct framedata_t {
 struct framedata_t fd = {.line1 = {0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00,
                                    0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff,
                                    0x00, 0xff},
-                         .l_ptr = fd.line1,
                          .line = 0,
                          .vsync = 16,
                          .line_handler = &field_1_sync};
 
 int main() {
-  for (int i = 0; i < 18; i++) {
-    fd.line1[i] = 0b10101010;
-  }
-
   cli();
   // PB1(OC1A) and PB7 as outputs
   DDRB |= (1 << 1);
@@ -85,9 +84,8 @@ int main() {
   TCCR1A |= _BV(WGM11);                // weedspeed PWM, TOP = ICR1
   TCCR1B |= _BV(WGM13) | _BV(WGM12);
   // Yeet values
-
-  OCR1A = 26;
-  ICR1 = 1024;
+  OCR1A = VPULSE;
+  ICR1 = LINE_RATE;
 
   TCCR1B |= _BV(CS10); // no prescale on clock, i.e. 16meg
   TIMSK1 |= _BV(
@@ -97,10 +95,9 @@ int main() {
   while (1) {
     _delay_ms(100);
     PORTB |= (1 << 5);
-    textbuff[5]++;
+    // textbuff[5]++;
     _delay_ms(100);
     PORTB &= !(1 << 5);
-    cunt++;
   }
   return 0;
 }
@@ -109,126 +106,143 @@ ISR(TIMER1_OVF_vect) { (*fd.line_handler)(); }
 
 void field_1_sync() {
   switch (fd.vsync) {
-  case 16: // First V-sync - end of F2 short pulses
-    OCR1A = 16;
-    ICR1 = 512;
+  case 0: // Vsync Short Pulse, Line 311 start
+    OCR1A = VPULSE_SHORT;
+    ICR1 = LINE_DOUBLE_RATE;
     break;
 
-  case 10:       // Vsync pulse 7
-    OCR1A = 442; // F1 start long pulses
+  case 5: // Vsync Long Pulse, Line 313.5 start
+    OCR1A = VPULSE_LONG;
     break;
 
-  case 5: // Vsync pulse 12
-    OCR1A = 16;
+  case 10: // Vsync Short Pulse, Line 316 start
+    OCR1A = VPULSE_SHORT;
     break;
 
-  case 0:        // We've been slightly naughty and handled the first video gen
-                 // scanline lol
-    OCR1A = 26;  // Standard sync pulse length
-    ICR1 = 1024; // Standard line rate
+  case 15: // Vsync Short Pulse, Line 316 start
+    OCR1A = VPULSE;
+    break;
+
+  case 16: // We've been slightly naughty and handled the first video gen
+           // scanline lol
+    OCR1A = VPULSE;   // Standard sync pulse length
+    ICR1 = LINE_RATE; // Standard line rate
     fd.line = 7;
+    fd.vsync = 0;
     fd.line_handler = &line_gen_f1;
-    break;
+    return;
   }
-  fd.vsync--;
+  fd.vsync++;
   return;
 }
 
 void field_2_sync() {
   switch (fd.vsync) {
-  case 14: // First V-sync - end of F1 short pulses
-    OCR1A = 16;
-    ICR1 = 512;
+  case 0: // Vsync Short Pulse, Line 311 start
+    OCR1A = VPULSE_SHORT;
+    ICR1 = LINE_DOUBLE_RATE;
     break;
 
-  case 9:        // Vsync pulse 7
-    OCR1A = 442; // F2 start long pulses
+  case 4: // Vsync Long Pulse, Line 313.5 start
+    OCR1A = VPULSE_LONG;
     break;
 
-  case 4: // Vsync pulse 12
-    OCR1A = 16;
+  case 9: // Vsync Short Pulse, Line 316 start
+    OCR1A = VPULSE_SHORT;
     break;
 
-  case 0:        // We've been slightly naughty and handled the first video gen
-                 // scanline lol
-    OCR1A = 26;  // Standard sync pulse length
-    ICR1 = 1024; // Standard line rate
+  case 14: // We've been slightly naughty and handled the first video gen
+           // scanline lol
+    OCR1A = VPULSE;   // Standard sync pulse length
+    ICR1 = LINE_RATE; // Standard line rate
     fd.line = 319;
     fd.line_handler = &line_gen_f2;
-    break;
+    fd.vsync = 0;
+    return;
   }
-  fd.vsync--;
+  fd.vsync++;
   return;
 }
 
-uint8_t off = 32;
+uint8_t off = 21;
 
-
-uint16_t textY = 0;//((fd.line-48) << 2) + (fd.line-48);
+uint8_t fd1c = 0;
+uint8_t f1inc = 0;
+uint8_t f2inc = 0;
+uint8_t fd2c = 0;
+uint16_t textY = 0; //((fd.line-48) << 2) + (fd.line-48);
 void line_gen_f1(void) {
-  if (fd.line >= 24 + off && fd.line <= 309 - off) {
-     //__asm__ __volatile__("NOP");
-     //__asm__ __volatile__("NOP");
+  if (fd.line >= 32 && fd.line <= 288) {
+    //__asm__ __volatile__("NOP");
+    //__asm__ __volatile__("NOP");
     //_delay_us(10);
     //_delay_us(5);
     uint8_t ctr = 12;
 
-    uint16_t INDEX = textY + cunt;
-    
-    for(int i = 0; i < ctr; i++){
-      fd.line1[i] = pgm_read_byte(&(font8x8[textbuff[i]*8 + (textY/2)]));
+    for (int i = 0; i < ctr; i++) {
+      // fd.line1[i] = pgm_read_byte(&(font8x8[textbuff[i]*8 + 3 + (textY)]));
+      fd.line1[i] =
+          pgm_read_byte(&(font8x8[textbuff[fd1c + i] * 8 + 3 + (textY)]));
     }
 
-     //if(textY < 8){
-      //fd.line1[1] = pgm_read_byte(&(font8x8[INDEX]));//font8x8[3 + (63*8) + (textY * 8)];
-      //fd.line1[2] = pgm_read_byte(&(font8x8[INDEX+8]));
-     //}
-
-    textY+= 1;
-    if(textY == 16){
+    f1inc++;
+    if (f1inc == 15) {
+      fd1c+= 12;
+      f1inc = 0;
+    }
+    if (fd1c > 48) {
+      fd1c == 0;
+    }
+    textY += 1;
+    if (textY == 8) {
       textY = 0;
     }
 
-    volatile uint8_t *meme = &(fd.line1[0]);
+    uint8_t *meme = &(fd.line1[0]);
     linegoesbrr(meme, ctr);
   }
   if (fd.line == 310) {
-    fd.line_handler = &field_1_sync;
-    fd.vsync = 14;
-        textY = 0;
+    fd.line_handler = &field_2_sync;
+    OCR1A = VPULSE_SHORT;
+    textY = 0;
+    fd1c = 0;
   }
   fd.line++;
 }
 
 void line_gen_f2(void) {
-  if (fd.line >= 336 + off && fd.line <= 622 - off) {
+  if (fd.line >= 344 && fd.line <= 600) {
+    __asm__ __volatile__("NOP");
     //_delay_us(10);
-    //_delay_us(5);
     uint8_t ctr = 12;
-    
-    uint16_t INDEX = textY + cunt;
-    
-    for(int i = 0; i < ctr; i++){
-      fd.line1[i] = pgm_read_byte(&(font8x8[textbuff[i]*8 + 3 + (textY)]));
+
+    for (int i = 0; i < ctr; i++) {
+      // fd.line1[i] = pgm_read_byte(&(font8x8[textbuff[i]*8 + 3 + (textY)]));
+
+      fd.line1[i] =
+          pgm_read_byte(&(font8x8[textbuff[fd2c + i] * 8 + 3 + (textY)]));
+    }
+    f2inc++;
+    if (f2inc == 15) {
+      fd2c+= 12;
+      f2inc = 0;
+    }
+    if (fd2c > 48) {
+      fd2c == 0;
     }
 
-     //if(textY < 8){
-      //fd.line1[1] = pgm_read_byte(&(font8x8[INDEX]));//font8x8[3 + (63*8) + (textY * 8)];
-      //fd.line1[2] = pgm_read_byte(&(font8x8[INDEX+8]));
-     //}
-
-    textY+= 1;
-    if(textY == 16){
+    textY += 1;
+    if (textY == 8) {
       textY = 0;
     }
 
-    volatile uint8_t *meme = &(fd.line1[0]);
+    uint8_t *meme = &(fd.line1[0]);
     linegoesbrr(meme, ctr);
   }
   if (fd.line == 622) {
     fd.line_handler = &field_1_sync;
-    fd.vsync = 16;
     textY = 0;
+    fd2c = 0;
   }
   fd.line++;
 }
